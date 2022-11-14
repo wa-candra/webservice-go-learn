@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-sql-driver/mysql"
@@ -15,9 +16,9 @@ import (
 // Album represents data about a record Album.
 type Album struct {
 	ID     string  `json:"id"`
-	Title  string  `json:"title"`
-	Artist string  `json:"artist"`
-	Price  float64 `json:"price"`
+	Title  string  `json:"title" binding:"required"`
+	Artist string  `json:"artist" binding:"required"`
+	Price  float64 `json:"price" binding:"required"`
 }
 
 var albums = []Album{
@@ -32,18 +33,28 @@ func getAlbums(c *gin.Context) {
 	c.IndentedJSON(http.StatusOK, albums)
 }
 
-func postAlbums(c *gin.Context) {
+func addAlbum(c *gin.Context) {
 	var newAlbum Album
 
 	// Call BindJSON to bind the received JSON to
 	// newAlbum.
 	if err := c.BindJSON(&newAlbum); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Cannot parse the req body"})
 		return
 	}
 
-	// Add the new album to the slice.
-	albums = append(albums, newAlbum)
-	c.IndentedJSON(http.StatusCreated, newAlbum)
+	result, err := db.Exec("INSERT INTO album (title, artist, price) VALUES (?, ?, ?)", newAlbum.Title, newAlbum.Artist, newAlbum.Price)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"message": "Error while creating data"})
+		return
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"message": "Error while creating data"})
+		return
+	}
+	newAlbum.ID = strconv.FormatInt(id, 10)
+	c.JSON(http.StatusCreated, newAlbum)
 }
 
 // getAlbumByID locates the album whose ID value matches the id
@@ -96,7 +107,7 @@ func main() {
 
 	router := gin.Default()
 	router.GET("/albums", getAlbums)
-	router.POST("/albums", postAlbums)
+	router.POST("/albums", addAlbum)
 	router.GET("/albums/:id", getAlbumByID)
 	router.Run("localhost:8080")
 }

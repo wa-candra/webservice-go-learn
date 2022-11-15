@@ -21,16 +21,33 @@ type Album struct {
 	Price  float64 `json:"price" binding:"required"`
 }
 
-var albums = []Album{
-	{ID: "1", Title: "Blue Train", Artist: "John Coltrane", Price: 56.99},
-	{ID: "2", Title: "Jeru", Artist: "Gerry Mulligan", Price: 17.99},
-	{ID: "3", Title: "Sarah Vaughan and Clifford Brown", Artist: "Sarah Vaughan", Price: 39.99},
-}
-
 var db *sql.DB
 
 func getAlbums(c *gin.Context) {
-	c.IndentedJSON(http.StatusOK, albums)
+	// An albums slice to hold data from returned rows.
+	var albums []Album
+
+	rows, err := db.Query("SELECT * FROM album LIMIT 10")
+	if err != nil {
+		log.Fatal(err)
+		c.JSON(http.StatusBadGateway, gin.H{"message": "Error while retrieving data"})
+	}
+	defer rows.Close()
+	// Loop through rows, using Scan to assign column data to struct fields.
+	for rows.Next() {
+		var alb Album
+		if err := rows.Scan(&alb.ID, &alb.Title, &alb.Artist, &alb.Price); err != nil {
+			log.Fatal(err)
+			c.JSON(http.StatusBadGateway, gin.H{"message": "Error while retrieving data"})
+		}
+		albums = append(albums, alb)
+	}
+	if err := rows.Err(); err != nil {
+		log.Fatal(err)
+		c.JSON(http.StatusBadGateway, gin.H{"message": "Error while retrieving data"})
+	}
+
+	c.JSON(http.StatusOK, albums)
 }
 
 func addAlbum(c *gin.Context) {

@@ -50,6 +50,40 @@ func getAlbums(c *gin.Context) {
 	c.JSON(http.StatusOK, albums)
 }
 
+func getAlbumsByArtist(c *gin.Context) {
+	artistName := c.Param("name")
+
+	var albums []Album
+
+	rows, err := db.Query("SELECT * FROM album WHERE artist = ? LIMIT 10", artistName)
+	if err != nil {
+		log.Fatal(err)
+		c.JSON(http.StatusBadGateway, gin.H{"message": "Error while retrieving data"})
+	}
+
+	defer rows.Close()
+	// Loop through rows, using Scan to assign column data to struct fields.
+	for rows.Next() {
+		var alb Album
+		if err := rows.Scan(&alb.ID, &alb.Title, &alb.Artist, &alb.Price); err != nil {
+			log.Fatal(err)
+			c.JSON(http.StatusBadGateway, gin.H{"message": "Error while retrieving data"})
+		}
+		albums = append(albums, alb)
+	}
+	if err := rows.Err(); err != nil {
+		log.Fatal(err)
+		c.JSON(http.StatusBadGateway, gin.H{"message": "Error while retrieving data"})
+	}
+
+	if len(albums) == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"message": "album not found"})
+		return
+	}
+
+	c.JSON(http.StatusOK, albums)
+}
+
 func addAlbum(c *gin.Context) {
 	var newAlbum Album
 
@@ -144,6 +178,7 @@ func main() {
 	router.GET("/albums", getAlbums)
 	router.POST("/albums", addAlbum)
 	router.GET("/albums/:id", getAlbumByID)
+	router.GET("/albums/artist/:name", getAlbumsByArtist)
 	router.DELETE("/albums/:id", deleteAlbum)
 	router.Run("localhost:8080")
 }

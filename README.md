@@ -6,4 +6,4 @@ TODO:
 - [X] request data from database
 - [X] add test
 - [X] modularize (to each files)
-- [] add auth
+- [ ] add auth

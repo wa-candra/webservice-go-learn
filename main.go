@@ -77,6 +77,24 @@ func getAlbumByID(c *gin.Context) {
 	c.JSON(http.StatusOK, alb)
 }
 
+func deleteAlbum(c *gin.Context) {
+	id := c.Param("id")
+
+	result, err := db.Exec("DELETE FROM album WHERE id = ?", id)
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"message": "Error while deleting data"})
+		log.Fatal(err)
+		return
+	}
+	_, err = result.RowsAffected()
+	if err != nil {
+		c.JSON(http.StatusBadGateway, gin.H{"message": "Error while deleting data"})
+		log.Fatal(err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"message": "Delete data success!"})
+}
+
 func main() {
 	errEnv := godotenv.Load(".env")
 	if errEnv != nil {
@@ -109,5 +127,6 @@ func main() {
 	router.GET("/albums", getAlbums)
 	router.POST("/albums", addAlbum)
 	router.GET("/albums/:id", getAlbumByID)
+	router.DELETE("/albums/:id", deleteAlbum)
 	router.Run("localhost:8080")
 }
